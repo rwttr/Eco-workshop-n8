@@ -213,7 +213,7 @@ Design properties:
 ### Baseline autoencoder (for comparison)
 
 ```mermaid
-flowchart LR
+flowchart TD
     classDef default fill:#ffffff,stroke:#333333,color:#000000;
     X["Noisy input<br/>H×W×3"] --> E1["Conv 3×3, 3→16"] --> E2["Conv 3×3 s2, 16→32"] --> E3["Conv 3×3 s2, 32→32<br/>bottleneck H/4×W/4"]
     E3 --> D1["ConvT 4×4 s2, 32→32"] --> D2["ConvT 4×4 s2, 32→16"] --> D3["Conv 3×3, 16→3, sigmoid"] --> Y["Output<br/>H×W×3"]
