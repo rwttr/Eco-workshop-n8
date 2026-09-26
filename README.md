@@ -57,7 +57,7 @@ Zygote is the default AD backend here. It handles standard Flux layers well and 
 
 ## Method
 
-- **Data:** random 40×40 patches from `image.png` (600×539) at scales 1/2, 2/3 and 1, with random flips and transposes. The bottom 20 % of the image is held out for validation.
+- **Data:** random 40×40 patches from the top 80 % of `image.png` (600×539), with random flips and transposes. The bottom 20 % is held out for validation.
 - **Noise:** Gaussian white noise with σ ~ U[0.05, 0.35]. Half of the patches also receive random-valued impulse noise (p ~ U[0, 0.20]). New noise is drawn every epoch.
 - **Training:** MSE loss and Adam (learning rate 2e-3, divided by 5 for the final quarter of training), for 10 epochs of 1,024 patches with batch size 32.
 - **Inference:** a single forward pass for any image size. Large images are processed as 256×256 tiles with a 16-pixel margin, which gives output identical to a single pass.
@@ -143,24 +143,24 @@ Measured on an Apple Silicon laptop (CPU, one thread, default settings). Values 
 | Model | Parameters | Training time | PSNR |
 |---|---|---|---|
 | Noisy input | – | – | 14.4 dB |
-| Baseline autoencoder | 39,395 | 37 s | 21.9 dB |
-| Residual CNN | 27,363 | 80 s | **24.4 dB** |
+| Baseline autoencoder | 39,395 | 37 s | 22.3 dB |
+| Residual CNN | 27,363 | 80 s | **24.2 dB** |
 
 **Inference** on the full image (539×600), which takes about 0.4 s per image:
 
 | Noise | Noisy input | Best blur | Best median | Residual CNN |
 |---|---|---|---|---|
-| σ = 0.15, p = 0.10 (demo) | 14.3 dB | 21.7 dB | 24.9 dB | **26.0 dB** |
-| Gaussian σ = 0.10 | 21.3 dB | 27.8 dB | 27.4 dB | **28.3 dB** |
-| Gaussian σ = 0.30 | 12.8 dB | 20.4 dB | 22.4 dB | **24.5 dB** |
+| σ = 0.15, p = 0.10 (demo) | 14.3 dB | 21.7 dB | 24.9 dB | **25.7 dB** |
+| Gaussian σ = 0.10 | 21.3 dB | **27.8 dB** | 27.4 dB | **27.8 dB** |
+| Gaussian σ = 0.30 | 12.8 dB | 20.4 dB | 22.4 dB | **24.4 dB** |
 | Gaussian σ = 0.50 (beyond training range) | 9.4 dB | 16.1 dB | 19.0 dB | **21.3 dB** |
-| Impulse p = 0.10 | 16.3 dB | 24.4 dB | **31.3 dB** | 27.2 dB |
-| Impulse p = 0.30 (beyond training range) | 11.5 dB | 17.8 dB | **27.7 dB** | 23.5 dB |
+| Impulse p = 0.10 | 16.3 dB | 24.4 dB | **31.3 dB** | 27.0 dB |
+| Impulse p = 0.30 (beyond training range) | 11.5 dB | 17.8 dB | **27.7 dB** | 22.8 dB |
 
 - **Tiled inference:** processing the image as 256×256 tiles with a 16-pixel margin gives output identical to a single pass, with memory bounded by the tile size.
-- **Where the network leads:** Gaussian and mixed noise, with the margin widening as the noise level rises.
+- **Where the network leads:** mixed noise and moderate-to-strong Gaussian noise, with the margin widening as the noise level rises. At σ = 0.10 it ties with the best Gaussian blur.
 - **Where the median filter leads:** pure impulse noise, for which it is designed.
-- **Unseen noise:** on row-stripe noise, PSNR rises from 21.6 dB to 25.5 dB, but banding remains visible. This shows that the model generalises only within its training distribution.
+- **Unseen noise:** on row-stripe noise, PSNR rises from 21.6 dB to 25.4 dB, but banding remains visible. This shows that the model generalises only within its training distribution.
 
 ## Repository layout
 
