@@ -98,21 +98,80 @@ IJulia.installkernel("Julia (threads)", "--project=@."; env = Dict("JULIA_NUM_TH
 
 ## Evaluation metrics
 
-**Mean squared error (MSE)** is the training loss. It is the average squared difference between the output $\hat{x}$ and the clean reference $x$ over all $N$ pixel values:
+All metrics compare a restored image $\hat{x}$ with the clean reference $x$. Both are `Float32` arrays with intensities in $[0, 1]$, and each metric is computed over all $N$ values: every pixel of all three RGB channels.
+
+### Mean squared error (MSE)
 
 $$\mathrm{MSE}(\hat{x}, x) = \frac{1}{N}\sum_{i=1}^{N} (\hat{x}_i - x_i)^2$$
 
-**Peak signal-to-noise ratio (PSNR)** is the reported quality metric. For images with intensities in $[0, 1]$ (peak value 1):
+- **Role:** MSE is the **training loss** (`Flux.mse`). Minimising it drives the network towards the conditional mean of the clean image, given the noisy input.
+- **Interpretation:** its square root, the root-mean-square error (RMSE), is the typical per-value error in intensity units. For example, RMSE = 0.05 means an average deviation of about 5 % of the intensity range, or about 13 levels on an 8-bit scale of 0–255.
+- **Limitation:** MSE values are small and hard to compare by eye (0.0023 vs 0.0068), so results are reported in PSNR.
 
-$$\mathrm{PSNR}(\hat{x}, x) = 10 \log_{10}\frac{1}{\mathrm{MSE}(\hat{x}, x)} \quad [\mathrm{dB}]$$
+### Peak signal-to-noise ratio (PSNR)
 
-PSNR is logarithmic: each gain of 3 dB halves the MSE, and a 10 dB gain is a tenfold reduction. As a rough guide for natural images, below 20 dB is visibly degraded, 25–30 dB is good, and above 30 dB is hard to tell from the reference. PSNR measures pixel-wise fidelity and does not fully reflect perceived quality. Structural metrics such as SSIM (available as `assess_ssim` in Images.jl) are a common complement.
+$$\mathrm{PSNR}(\hat{x}, x) = 10 \log_{10}\frac{\mathrm{MAX}^2}{\mathrm{MSE}(\hat{x}, x)} = 10 \log_{10}\frac{1}{\mathrm{MSE}(\hat{x}, x)} \quad [\mathrm{dB}], \qquad \mathrm{MAX} = 1$$
 
-**Evaluation protocol.**
-- *Validation (notebook 2):* 128 fixed 48×48 patches from the held-out bottom 20 % of the image, with mixed noise (Gaussian σ = 0.15 plus impulse p = 0.10) and fixed random seeds.
-- *Test (notebook 3):* the image at 1/2 scale (539×600) and at full resolution (1078×1200). Two sweeps are run: Gaussian σ ∈ {0.05, …, 0.50} and impulse p ∈ {0.05, …, 0.30}. Levels above the training ranges test extrapolation.
-- *Baselines:* the noisy input itself; the best Gaussian blur (σ_blur ∈ {0.5, 1, 1.5, 2}); and the best median filter (3×3 or 5×5). For each input, the setting with the highest PSNR is used, which is an upper bound for these filters.
-- *Out-of-distribution test:* row-stripe noise, which is spatially correlated and absent from training.
+PSNR expresses the error relative to the largest possible signal value, on a logarithmic decibel scale. **Higher is better**, and a perfect reconstruction has infinite PSNR. In the notebooks it is implemented as:
+
+```julia
+psnr(x, ref) = 10 * log10(1 / mean(abs2, x .- ref))
+```
+
+Using `MAX = 1` with images in $[0, 1]$ gives the same values as the common 8-bit convention (`MAX = 255` with images in $[0, 255]$).
+
+**Relation to the noise level.** For additive Gaussian noise with standard deviation σ and no clipping, MSE ≈ σ², so the PSNR of the noisy input is about $-20\log_{10}\sigma$:
+
+| σ | 0.05 | 0.10 | 0.15 | 0.20 | 0.30 |
+|---|---|---|---|---|---|
+| PSNR of noisy input (theory) | 26.0 dB | 20.0 dB | 16.5 dB | 14.0 dB | 10.5 dB |
+
+The measured values are slightly higher (for example 21.3 dB at σ = 0.10), because noisy values are clipped to $[0, 1]$.
+
+**Reading differences in PSNR.** Because the scale is logarithmic, differences matter more than absolute values. A gain of ΔPSNR decibels reduces the MSE by a factor of $10^{\Delta/10}$:
+
+| ΔPSNR | +1 dB | +3 dB | +6 dB | +10 dB | +20 dB |
+|---|---|---|---|---|---|
+| MSE reduced by | ×1.26 | ×2 | ×4 | ×10 | ×100 |
+
+**Worked example.** The demo setting in notebook 3 (σ = 0.15, p = 0.10, 539×600 image):
+
+| Output | PSNR | MSE | RMSE (8-bit levels) | Gain over input | MSE reduction |
+|---|---|---|---|---|---|
+| Noisy input | 14.3 dB | 0.0372 | 0.193 (49) | – | – |
+| Best Gaussian blur | 21.7 dB | 0.0068 | 0.082 (21) | +7.4 dB | ×5.5 |
+| Best median filter | 24.9 dB | 0.0032 | 0.057 (15) | +10.6 dB | ×11.5 |
+| Neural denoiser | 26.4 dB | 0.0023 | 0.048 (12) | +12.1 dB | ×16.2 |
+
+The network's 1.5 dB lead over the median filter corresponds to about 30 % lower MSE.
+
+**Rough quality guide for 8-bit natural images.**
+
+| PSNR | Typical visual impression |
+|---|---|
+| < 20 dB | strongly degraded; noise or artefacts dominate |
+| 20–25 dB | clearly visible degradation, but the content is recognisable |
+| 25–30 dB | good; minor artefacts or softness visible on close inspection |
+| 30–40 dB | high quality; differences hard to see at normal viewing size |
+| > 40 dB | practically indistinguishable from the reference |
+
+These ranges are indicative only. PSNR is comparable only between methods evaluated on the **same image, noise realisation and reference**.
+
+### Limitations of pixel-wise metrics
+- **Structure-blind.** MSE and PSNR score every pixel independently. A blurred image and a noisy image can have the same PSNR yet look very different, and PSNR tends to favour smooth (slightly blurred) outputs.
+- **Complementary metrics.** SSIM (structural similarity) compares local means, contrast and correlation, and tracks perceived structure better; it is available as `assess_ssim` in Images.jl. Learned perceptual metrics such as LPIPS go further, but require a pretrained network.
+- **Visual inspection.** For these reasons, the notebooks always show zoomed side-by-side crops next to the numbers.
+
+### Evaluation protocol
+- **Validation (notebook 2):** 128 fixed 48×48 patches from the held-out bottom 20 % of the image, with mixed noise (Gaussian σ = 0.15 plus impulse p = 0.10). Fixed random seeds make every epoch and every run comparable. PSNR is computed from the MSE pooled over all patches.
+- **Test (notebook 3):** the image at 1/2 scale (539×600) and at full resolution (1078×1200). Two sweeps are run: Gaussian σ ∈ {0.05, …, 0.50} and impulse p ∈ {0.05, …, 0.30}. Levels above the training ranges (σ > 0.35, p > 0.20) test extrapolation.
+- **Baselines:**
+  - the noisy input itself, which is the reference point for any gain
+  - the best Gaussian blur (σ_blur ∈ {0.5, 1, 1.5, 2})
+  - the best median filter (3×3 or 5×5)
+
+  For each input, the filter setting with the highest PSNR is chosen using the clean reference. This favours the baselines: it is an upper bound that a real filter, tuned without the clean image, would not reach.
+- **Out-of-distribution test:** row-stripe noise, which is spatially correlated and absent from training. It measures how far the model generalises beyond its training noise.
 
 ## Network architecture
 
