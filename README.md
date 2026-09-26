@@ -120,6 +120,7 @@ PSNR is logarithmic: each gain of 3 dB halves the MSE, and a 10 dB gain is a ten
 
 ```mermaid
 flowchart TD
+    classDef default fill:#ffffff,stroke:#333333,color:#000000;
     X["Noisy input x<br/>H×W×3"] --> L1["Conv 3×3, 3→24, ReLU<br/>H×W×24"]
     subgraph N["Noise estimator"]
         L1 --> L2["5 × [Conv 3×3, 24→24, ReLU]<br/>H×W×24"]
@@ -128,6 +129,7 @@ flowchart TD
     L7 --> SUB(["x − n̂"])
     X -- "residual connection" --> SUB
     SUB --> Y["Denoised output<br/>H×W×3"]
+    style N fill:#ffffff,stroke:#999999,color:#000000
 ```
 
 Flux structure: `SkipConnection(Chain(Conv, 5 × Conv, Conv), subtract_noise)`.
@@ -153,6 +155,7 @@ Design properties:
 
 ```mermaid
 flowchart LR
+    classDef default fill:#ffffff,stroke:#333333,color:#000000;
     X["Noisy input<br/>H×W×3"] --> E1["Conv 3×3, 3→16"] --> E2["Conv 3×3 s2, 16→32"] --> E3["Conv 3×3 s2, 32→32<br/>bottleneck H/4×W/4"]
     E3 --> D1["ConvT 4×4 s2, 32→32"] --> D2["ConvT 4×4 s2, 32→16"] --> D3["Conv 3×3, 16→3, sigmoid"] --> Y["Output<br/>H×W×3"]
 ```
