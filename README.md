@@ -143,10 +143,10 @@ Measured on an Apple Silicon laptop (CPU, one thread, default settings). Values 
 | Model | Parameters | Training time | PSNR |
 |---|---|---|---|
 | Noisy input | – | – | 14.4 dB |
-| Baseline autoencoder | 39,395 | 58 s | 22.5 dB |
-| Residual CNN | 27,363 | 169 s | **24.7 dB** |
+| Baseline autoencoder | 39,395 | 59 s | 22.5 dB |
+| Residual CNN | 27,363 | 184 s | **24.7 dB** |
 
-**Inference** on the half-resolution test image, which takes 0.4 s per image:
+**Inference** on the half-resolution test image, which takes about 0.8 s per image:
 
 | Noise | Noisy input | Best blur | Best median | Residual CNN |
 |---|---|---|---|---|
@@ -157,7 +157,7 @@ Measured on an Apple Silicon laptop (CPU, one thread, default settings). Values 
 | Impulse p = 0.10 | 16.3 dB | 24.4 dB | **31.3 dB** | 27.7 dB |
 | Impulse p = 0.30 (beyond training range) | 11.5 dB | 17.8 dB | **27.7 dB** | 23.8 dB |
 
-- **Full resolution (1078×1200, tiled):** mixed noise improves from 14.3 dB to 27.1 dB in 3.0 s.
+- **Full resolution (1078×1200, tiled):** mixed noise improves from 14.3 dB to 27.1 dB in 4.5 s.
 - **Where the network leads:** Gaussian and mixed noise, with the margin widening as the noise level rises.
 - **Where the median filter leads:** pure impulse noise, for which it is designed.
 - **Unseen noise:** on row-stripe noise, PSNR rises from 21.6 dB to 25.4 dB, but banding remains visible. This shows that the model generalises only within its training distribution.
