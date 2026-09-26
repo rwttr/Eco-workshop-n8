@@ -1,0 +1,6 @@
+# Generated model weights (recreated by 02_denoise_training.ipynb)
+denoiser.jld2
+
+# Jupyter / editor
+.ipynb_checkpoints/
+.DS_Store

@@ -1,0 +1,4 @@
+{
+    // Render notebook markdown at the same size as code cells (default is 120 % of editor.fontSize)
+    "notebook.markup.fontSize": 14
+}
